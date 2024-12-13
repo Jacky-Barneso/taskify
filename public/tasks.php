@@ -70,207 +70,136 @@ if (isset($_GET['toggle_status'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Your Tasks</title>
-    <link rel="stylesheet" href="style.css"> <!-- Link to an external CSS file for better styling -->
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .category-badge {
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
-<style>
-    /* General Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Body and Font */
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
-    color: #333;
-    padding: 20px;
-}
-
-/* Container */
-.container {
-    width: 80%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Header */
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-header h1 {
-    font-size: 2rem;
-    color: #333;
-}
-
-.logout-btn {
-    padding: 8px 16px;
-    background-color: #007BFF;
-    color: #fff;
-    text-decoration: none;
-    border-radius: 5px;
-}
-
-.logout-btn:hover {
-    background-color: #0056b3;
-}
-
-/* Form Section */
-.task-form {
-    margin-bottom: 30px;
-}
-
-.task-form h2 {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-}
-
-.task-form input, .task-form textarea, .task-form select, .task-form button {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-
-.task-form button {
-    background-color: #28a745;
-    color: white;
-    border: none;
-}
-
-.task-form button:hover {
-    background-color: #218838;
-}
-
-/* Task List */
-.task-list {
-    margin-top: 30px;
-}
-
-.task-list h2 {
-    font-size: 1.5rem;
-    margin-bottom: 15px;
-}
-
-.task-item {
-    background-color: #fafafa;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.task-details {
-    max-width: 80%;
-}
-
-.task-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.delete-btn {
-    background-color: #dc3545;
-    color: white;
-    padding: 5px 10px;
-    text-decoration: none;
-    border-radius: 5px;
-}
-
-.delete-btn:hover {
-    background-color: #c82333;
-}
-
-/* Task Actions */
-.status-btn {
-    background-color: #17a2b8;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    text-decoration: none;
-}
-
-.status-btn:hover {
-    background-color: #138496;
-}
-
-.delete-btn {
-    background-color: #dc3545;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 5px;
-    text-decoration: none;
-}
-
-.delete-btn:hover {
-    background-color: #c82333;
-}
-
-</style>
 <body>
-    <div class="container">
-        <header>
-            <h1>Your Tasks</h1>
-            <a href="logout.php" class="logout-btn">Logout</a>
+    <div class="container py-5" >
+        <!-- Header -->
+        <header class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+            <h1 class="display-6 text-primary">Quicklist</h1>
+            <a href="login.php" class="btn btn-outline-danger">Logout</a>
         </header>
 
-        <!-- Form to add new task -->
-        <section class="task-form">
-            <h2>Add New Task</h2>
-            <form method="POST" action="tasks.php">
-                <label for="task_title">Task Title</label>
-                <input type="text" id="task_title" name="task_title" required><br><br>
+        <!-- Add Task Section -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4">Your Tasks</h2>
+            <!-- Add Task Button -->
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
+        </div>
 
-                <label for="task_description">Description</label>
-                <textarea id="task_description" name="task_description"></textarea><br><br>
+        <!-- Task List -->
+        <section>
+            <div class="row">
+                <!-- Work Category -->
+                <div class="col-md-6">
+                    <h3 class="h5 text-secondary">Work</h3>
+                    <ul class="list-group">
+                        <?php foreach ($tasks as $task): ?>
+                            <?php if ($task['category_id'] == 1): ?>
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold">
+                                            <?= htmlspecialchars($task['title']) ?>
+                                        </span>
+                                        <p class="text-muted mb-1">
+                                            <?= htmlspecialchars($task['description']) ?>
+                                        </p>
+                                        <span class="badge bg-info category-badge">
+                                            <?= $task['status'] ? 'Completed' : 'Pending' ?>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
+                                            <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
+                                        </a>
+                                        <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
+                                    </div>
+                                </li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
 
-                <label for="category_id">Category</label>
-                <select id="category_id" name="category_id">
-                    <option value="">Select Category</option>
-                    <!-- Example categories, you should fetch categories from the database -->
-                    <option value="1">Work</option>
-                    <option value="2">Personal</option>
-                </select><br><br>
-
-                <button type="submit">Add Task</button>
-            </form>
-        </section>
-
-        <section class="task-list">
-            <h2>All Tasks</h2>
-            <ul>
-                <?php foreach ($tasks as $task): ?>
-                    <li class="task-item">
-                        <div class="task-details">
-                            <strong><?= htmlspecialchars($task['title']) ?></strong><br>
-                            <?= htmlspecialchars($task['description']) ?>
-                        </div>
-                        <div class="task-actions">
-                            <!-- Toggle task status (mark as completed/pending) -->
-                            <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="status-btn">
-                                <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
-                            </a>
-                            <!-- Delete task -->
-                            <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure you want to delete this task?')" class="delete-btn">Delete</a>
-                        </div>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+                <!-- Personal Category -->
+                <div class="col-md-6">
+                    <h3 class="h5 text-secondary">Personal</h3>
+                    <ul class="list-group">
+                        <?php foreach ($tasks as $task): ?>
+                            <?php if ($task['category_id'] == 2): ?>
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="fw-bold">
+                                            <?= htmlspecialchars($task['title']) ?>
+                                        </span>
+                                        <p class="text-muted mb-1">
+                                            <?= htmlspecialchars($task['description']) ?>
+                                        </p>
+                                        <span class="badge bg-info category-badge">
+                                            <?= $task['status'] ? 'Completed' : 'Pending' ?>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
+                                            <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
+                                        </a>
+                                        <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
+                                    </div>
+                                </li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
         </section>
     </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTaskModalLabel">Add New Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="tasks.php">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="task_title" class="form-label">Task Title</label>
+                            <input type="text" id="task_title" name="task_title" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="task_description" class="form-label">Description</label>
+                            <textarea id="task_description" name="task_description" class="form-control"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">Category</label>
+                            <select id="category_id" name="category_id" class="form-select">
+                                <option value="">Select Category</option>
+                                <option value="1">Work</option>
+                                <option value="2">Personal</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
