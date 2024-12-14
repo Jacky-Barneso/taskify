@@ -7,16 +7,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
     $email = $_POST['email'];
     $password = $_POST['password'];
+    $role = $_POST['role']; // Capture role from the form
     $password_hash = password_hash($password, PASSWORD_DEFAULT); // Hash the password before storing
 
     // Insert the new user into the database
-    $stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :password_hash)");
+    $stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (:username, :email, :password_hash, :role)");
     
     // Execute the statement with parameters
     if ($stmt->execute([
         ':username' => $username,
         ':email' => $email,
-        ':password_hash' => $password_hash
+        ':password_hash' => $password_hash,
+        ':role' => $role
     ])) {
         echo "Registration successful! <a href='login.php'>Login now</a>";
     } else {
@@ -90,6 +92,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="password" id="password" name="password" class="form-control" required>
             </div>
 
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
             <button type="submit" class="btn btn-primary w-100">Sign Up</button>
         </form>
 
@@ -102,5 +112,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
-

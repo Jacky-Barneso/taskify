@@ -6,19 +6,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     
     $username = $_POST['username'];
     $password = $_POST['password'];
+    $role = $_POST['role'];
 
-    // Check if username exists in the database
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username");
-    $stmt->execute([':username' => $username]);
+    // Check if username and role exist in the database
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username AND role = :role");
+    $stmt->execute([':username' => $username, ':role' => $role]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($password, $user['password_hash'])) {
         // If credentials match, store user session
         $_SESSION['user_id'] = $user['id'];
-        header('Location: tasks.php');
+        $_SESSION['role'] = $user['role']; // Store role in the session
+        
+        // Redirect based on the selected role
+        if ($role === 'admin') {
+            header('Location: admin_dashboard.php');
+        } else {
+            header('Location: tasks.php');
+        }
         exit;
     } else {
-        echo "Invalid username or password!";
+        echo "Invalid username, password, or role!";
     }
 }
 ?>
@@ -83,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <input type="password" id="password" name="password" class="form-control" required>
             </div>
 
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select id="role" name="role" class="form-select" required>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
             <button type="submit" class="btn btn-primary w-100">Login</button>
         </form>
 
@@ -95,4 +111,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
