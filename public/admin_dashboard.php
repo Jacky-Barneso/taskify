@@ -19,10 +19,30 @@ if ($user['role'] !== 'admin') {
     exit;
 }
 
-// Admin-specific functionality
+// Fetch all users
 $stmtUsers = $pdo->prepare("SELECT * FROM users ORDER BY created_at DESC");
 $stmtUsers->execute();
 $allUsers = $stmtUsers->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch all tasks
+$stmtTasks = $pdo->prepare("
+    SELECT tasks.id, tasks.user_id, tasks.title, tasks.description, tasks.status, tasks.created_at, users.username 
+    FROM tasks 
+    INNER JOIN users ON tasks.user_id = users.id 
+    ORDER BY tasks.created_at DESC
+");
+$stmtTasks->execute();
+$allTasks = $stmtTasks->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch all categories
+$stmtCategories = $pdo->prepare("
+    SELECT categories.id, categories.name, categories.user_id, users.username 
+    FROM categories
+    INNER JOIN users ON categories.user_id = users.id
+    ORDER BY categories.id ASC
+");
+$stmtCategories->execute();
+$allCategories = $stmtCategories->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -97,6 +117,67 @@ $allUsers = $stmtUsers->fetchAll(PDO::FETCH_ASSOC);
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <h2 class="mt-5">Task Management</h2>
+        <table class="table table-bordered table-striped bg-white text-dark">
+            <thead>
+                <tr>
+                    <th>Task ID</th>
+                    <th>User</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($allTasks as $task): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($task['id']); ?></td>
+                        <td><?= htmlspecialchars($task['username']); ?></td>
+                        <td><?= htmlspecialchars($task['title']); ?></td>
+                        <td><?= htmlspecialchars($task['description']); ?></td>
+                        <td><?= htmlspecialchars($task['status']); ?></td>
+                        <td><?= htmlspecialchars($task['created_at']); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <h2 class="mt-5">Category Management</h2>
+        <table class="table table-bordered table-striped bg-white text-dark">
+            <thead>
+                <tr>
+                    <th>Category ID</th>
+                    <th>Name</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($allCategories as $category): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($category['id']); ?></td>
+                        <td><?= htmlspecialchars($category['name']); ?></td>
+                        <td><?= htmlspecialchars($category['username']); ?></td>
+                        <td>
+                            <form action="delete_category.php" method="POST" style="display: inline;">
+                                <input type="hidden" name="category_id" value="<?= $category['id']; ?>">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <form action="add_category.php" method="POST" class="mt-3">
+            <h3>Add New Category</h3>
+            <div class="mb-3">
+                <input type="text" name="name" class="form-control" placeholder="Category Name" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Category</button>
+        </form>
     </div>
 
     <!-- Bootstrap JS -->

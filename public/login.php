@@ -1,8 +1,8 @@
 <?php
 session_start();
+ // Database connection
+include '../config/db.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Database connection
-    include '../config/db.php';
     
     $username = $_POST['username'];
     $password = $_POST['password'];
@@ -14,6 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($password, $user['password_hash'])) {
+          // Check if the user is an admin
+        if ($user['role'] === 'admin') {
+            $_SESSION['admin_id'] = $user['id']; // Log in as admin
+        }
         // If credentials match, store user session
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role'] = $user['role']; // Store role in the session
