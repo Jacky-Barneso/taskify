@@ -19,8 +19,8 @@ $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Add task functionality
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['task_title'])) {
-    $task_title = $_POST['task_title'];
-    $task_description = $_POST['task_description'] ?? null;
+    $task_title = htmlspecialchars($_POST['task_title']);
+    $task_description = htmlspecialchars($_POST['task_description'] ?? null);
     $category_id = $_POST['category_id'] ?? null;
 
     $stmt = $pdo->prepare("INSERT INTO tasks (title, description, user_id, category_id) 
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['task_title'])) {
         ':user_id' => $user_id,
         ':category_id' => $category_id
     ]);
-    header('Location: tasks.php');
+    header('Location: tasks.php?message=Task added successfully');
     exit;
 }
 
@@ -40,7 +40,7 @@ if (isset($_GET['delete'])) {
     $task_id = $_GET['delete'];
     $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = :id AND user_id = :user_id");
     $stmt->execute([':id' => $task_id, ':user_id' => $user_id]);
-    header('Location: tasks.php');
+    header('Location: tasks.php?message=Task deleted successfully');
     exit;
 }
 
@@ -54,12 +54,12 @@ if (isset($_GET['toggle_status'])) {
 
     // Toggle the status
     if ($task) {
-        $new_status = !$task['status']; // Flip the boolean value
+        $new_status = $task['status'] ? 0 : 1; // Flip the boolean value
         $stmt = $pdo->prepare("UPDATE tasks SET status = :status WHERE id = :id");
         $stmt->execute([':status' => $new_status, ':id' => $task_id]);
     }
 
-    header('Location: tasks.php');
+    header('Location: tasks.php?message=Task status updated');
     exit;
 }
 ?>
@@ -82,17 +82,23 @@ if (isset($_GET['toggle_status'])) {
     </style>
 </head>
 <body>
-    <div class="container py-5" >
+    <div class="container py-5">
         <!-- Header -->
         <header class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
             <h1 class="display-6 text-primary">Quicklist</h1>
             <a href="login.php" class="btn btn-outline-danger">Logout</a>
         </header>
 
+        <!-- Notification Messages -->
+        <?php if (isset($_GET['message'])): ?>
+            <div class="alert alert-success">
+                <?= htmlspecialchars($_GET['message']) ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Add Task Section -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="h4">Your Tasks</h2>
-            <!-- Add Task Button -->
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
         </div>
 
@@ -202,4 +208,3 @@ if (isset($_GET['toggle_status'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
