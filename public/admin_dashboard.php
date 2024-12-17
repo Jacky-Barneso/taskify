@@ -53,6 +53,11 @@ $taskSummary = $stmtSummary->fetchAll(PDO::FETCH_ASSOC);
 $stmtTasksWithCategory = $pdo->prepare("SELECT * FROM tasks_with_category");
 $stmtTasksWithCategory->execute();
 $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch category task stats
+$stmtCategoryTaskStats = $pdo->prepare("SELECT * FROM category_task_stats");
+$stmtCategoryTaskStats->execute();
+$categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -172,6 +177,7 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="taskOptionsDropdown">
                             <li><a class="dropdown-item" href="#" id="viewTaskSummary">View Task Summary</a></li>
                             <li><a class="dropdown-item" href="#" id="viewTasksWithCategory">Tasks With Categories</a></li>
+                            <li><a class="dropdown-item" href="#" id="viewCategoryTaskStats">Category Task Stats</a></li>
                         </ul>
                     </div>
                 </div>
@@ -262,6 +268,36 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
+            <!-- Category Task Stats Table -->
+            <div id="categoryTaskStatsContainer" style="display: none;">
+                <h3>Category Task Stats</h3>
+                <table class="table table-bordered table-striped bg-white text-dark">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>User Name</th>
+                            <th>Category ID</th>
+                            <th>Category Name</th>
+                            <th>Completed Tasks</th>
+                            <th>Pending Tasks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($categoryTaskStats as $stat): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($stat['user_id']); ?></td>
+                                <td><?= htmlspecialchars($stat['user_name']); ?></td>
+                                <td><?= htmlspecialchars($stat['category_id']); ?></td>
+                                <td><?= htmlspecialchars($stat['category_name']); ?></td>
+                                <td><?= htmlspecialchars($stat['completed_tasks']); ?></td>
+                                <td><?= htmlspecialchars($stat['pending_tasks']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
+
 
             <!-- Categories Tab -->
             <div class="tab-pane fade" id="categories" role="tabpanel">
@@ -310,35 +346,46 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
             const tableBody = document.getElementById(tableBodyId);
             const rows = tableBody.getElementsByTagName('tr');
 
-            for (const row of rows) {
-                const cells = row.getElementsByTagName('td');
-                let matches = false;
+        for (const row of rows) {
+            const cells = row.getElementsByTagName('td');
+            let matches = false;
 
-                for (const cell of cells) {
-                    if (cell.textContent.toLowerCase().includes(filter)) {
-                        matches = true;
-                        break;
-                    }
+            for (const cell of cells) {
+                if (cell.textContent.toLowerCase().includes(filter)) {
+                    matches = true;
+                    break;
                 }
-                row.style.display = matches ? '' : 'none';
             }
+            row.style.display = matches ? '' : 'none';
         }
+    }
 
         document.getElementById('viewTaskSummary').addEventListener('click', function () {
             document.getElementById('taskTableContainer').style.display = 'none';
             document.getElementById('taskSummaryContainer').style.display = 'block';
             document.getElementById('tasksWithCategoryContainer').style.display = 'none';
+            document.getElementById('categoryTaskStatsContainer').style.display = 'none';
         });
 
         document.getElementById('viewTasksWithCategory').addEventListener('click', function () {
             document.getElementById('taskTableContainer').style.display = 'none';
             document.getElementById('taskSummaryContainer').style.display = 'none';
             document.getElementById('tasksWithCategoryContainer').style.display = 'block';
+            document.getElementById('categoryTaskStatsContainer').style.display = 'none';
+        });
+
+        // New Event Listener for Category Task Stats
+        document.getElementById('viewCategoryTaskStats').addEventListener('click', function () {
+            document.getElementById('taskTableContainer').style.display = 'none';
+            document.getElementById('taskSummaryContainer').style.display = 'none';
+            document.getElementById('tasksWithCategoryContainer').style.display = 'none';
+            document.getElementById('categoryTaskStatsContainer').style.display = 'block';
         });
 
         document.getElementById('searchUsers').addEventListener('keyup', () => filterTable('searchUsers', 'usersTableBody'));
         document.getElementById('searchTasks').addEventListener('keyup', () => filterTable('searchTasks', 'tasksTableBody'));
         document.getElementById('searchCategories').addEventListener('keyup', () => filterTable('searchCategories', 'categoriesTableBody'));
+
     </script>
 </body>
 </html>
