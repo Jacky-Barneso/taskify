@@ -176,6 +176,9 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
 
+                <input type="text" id="searchTasks" class="form-control mb-3" placeholder="Search Tasks...">
+
+
                 <div id="taskTableContainer">
                     <!-- Default Tasks Table -->
                     <table class="table table-bordered table-striped bg-white text-dark">
