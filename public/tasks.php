@@ -41,14 +41,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_task'])) {
     $task_title = htmlspecialchars($_POST['task_title']);
     $task_description = htmlspecialchars($_POST['task_description'] ?? null);
     $category_id = $_POST['category_id'] ?? null;
+    $deadline = $_POST['task_deadline'] ?? null;
 
     // Insert task into the database
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, category_id, user_id) VALUES (:title, :description, :category_id, :user_id)");
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, category_id, deadline, user_id) 
+                        VALUES (:title, :description, :category_id, :deadline, :user_id)");
     $stmt->execute([
         ':title' => $task_title,
         ':description' => $task_description,
         ':category_id' => $category_id,
-        ':user_id' => $user_id, // Assuming you have user authentication logic
+        ':deadline' => $deadline, // Add the deadline here
+        ':user_id' => $user_id,
     ]);
     
     // Redirect after successful addition
@@ -60,11 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_task'])) {
 // Handle task deletion
 if (isset($_GET['delete'])) {
     $task_id = $_GET['delete'];
+
+    // Ensure the task ID is numeric to prevent SQL injection
+    if (!is_numeric($task_id)) {
+        header('Location: tasks.php?message=Invalid task ID');
+        exit;
+    }
+
+    // Check if the task exists and belongs to the logged-in user
+    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE id = :id AND user_id = :user_id");
+    $stmt->execute([':id' => $task_id, ':user_id' => $user_id]);
+    $task = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$task) {
+        header('Location: tasks.php?message=Task not found or unauthorized access');
+        exit;
+    }
+
+    // Perform the delete operation
     $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = :id AND user_id = :user_id");
     $stmt->execute([':id' => $task_id, ':user_id' => $user_id]);
+
+    // Redirect with a success message
     header('Location: tasks.php?message=Task deleted successfully');
     exit;
 }
+
 
 
 // Handle task editing
@@ -72,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_task'])) {
     // Get task ID from the hidden input
     $task_id = $_POST['task_id'];
     
-    // Check if the task ID is valid (this ensures you're updating, not inserting)
+    // Check if the task ID is valid
     if (empty($task_id)) {
         echo "Error: Task ID is missing.";
         exit;
@@ -82,17 +106,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_task'])) {
     $task_title = htmlspecialchars($_POST['task_title']);
     $task_description = htmlspecialchars($_POST['task_description'] ?? null);
     $category_id = $_POST['category_id'] ?? null;
+    $deadline = $_POST['task_deadline'] ?? null;
 
-    // Update query: ensure task_id is used and prevent duplicates
+    // Update query with deadline field
     $stmt = $pdo->prepare("UPDATE tasks 
-                           SET title = :title, description = :description, category_id = :category_id 
-                           WHERE id = :id AND user_id = :user_id"); // Ensure the task belongs to the logged-in user
+                        SET title = :title, description = :description, category_id = :category_id, deadline = :deadline
+                        WHERE id = :id AND user_id = :user_id");
     $stmt->execute([
         ':title' => $task_title,
         ':description' => $task_description,
         ':category_id' => $category_id,
-        ':id' => $task_id, // Update the task with the correct task ID
-        ':user_id' => $user_id, // Ensure task belongs to the logged-in user
+        ':deadline' => $deadline, // Add deadline to the update
+        ':id' => $task_id,
+        ':user_id' => $user_id, 
     ]);
     
     // Redirect with success message
@@ -101,24 +127,46 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_task'])) {
 }
 
 
+
 // Handle task status update (mark as completed or pending)
 if (isset($_GET['toggle_status'])) {
     $task_id = $_GET['toggle_status'];
-    // Fetch current status
+
+    // Ensure the task ID is numeric to prevent SQL injection
+    if (!is_numeric($task_id)) {
+        header('Location: tasks.php?message=Invalid task ID');
+        exit;
+    }
+
+    // Check if the task exists and belongs to the logged-in user
     $stmt = $pdo->prepare("SELECT status FROM tasks WHERE id = :id AND user_id = :user_id");
     $stmt->execute([':id' => $task_id, ':user_id' => $user_id]);
     $task = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Toggle the status
+    // Proceed only if the task exists
     if ($task) {
-        $new_status = $task['status'] ? 0 : 1; // Flip the boolean value
-        $stmt = $pdo->prepare("UPDATE tasks SET status = :status WHERE id = :id");
-        $stmt->execute([':status' => $new_status, ':id' => $task_id]);
-    }
+        // Toggle the status (if current status is true, make it false and vice versa)
+        $new_status = $task['status'] ? 0 : 1;
 
-    header('Location: tasks.php?message=Task status updated');
-    exit;
+        // Update the task status in the database
+        $stmt = $pdo->prepare("UPDATE tasks SET status = :status WHERE id = :id AND user_id = :user_id");
+        $stmt->execute([
+            ':status' => $new_status,
+            ':id' => $task_id,
+            ':user_id' => $user_id
+        ]);
+
+        // Add a specific success message based on the new status
+        $status_message = $new_status ? 'Task marked as completed' : 'Task marked as pending';
+        header("Location: tasks.php?message=$status_message");
+        exit;
+    } else {
+        // Task not found or unauthorized access
+        header('Location: tasks.php?message=Task not found or unauthorized access');
+        exit;
+    }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -251,7 +299,7 @@ if (isset($_GET['toggle_status'])) {
         </section>
     </div>
 
-    <!-- Add Task Modal -->
+<!-- Add Task Modal -->
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -282,6 +330,12 @@ if (isset($_GET['toggle_status'])) {
                             <option value="2">Personal</option>
                         </select>
                     </div>
+
+                    <!-- Task Deadline -->
+                    <div class="mb-3">
+                        <label for="add_task_deadline" class="form-label">Deadline</label>
+                        <input type="datetime-local" id="add_task_deadline" name="task_deadline" class="form-control">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -293,7 +347,8 @@ if (isset($_GET['toggle_status'])) {
 </div>
 
 
-    <!-- Edit Task Modal -->
+
+<!-- Edit Task Modal -->
 <div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -327,6 +382,12 @@ if (isset($_GET['toggle_status'])) {
                             <option value="2">Personal</option>
                         </select>
                     </div>
+
+                    <!-- Task Deadline -->
+                    <div class="mb-3">
+                        <label for="edit_task_deadline" class="form-label">Deadline</label>
+                        <input type="datetime-local" id="edit_task_deadline" name="task_deadline" class="form-control">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -336,6 +397,7 @@ if (isset($_GET['toggle_status'])) {
         </div>
     </div>
 </div>
+
 
 
 

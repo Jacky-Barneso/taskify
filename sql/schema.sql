@@ -22,18 +22,22 @@ CREATE TABLE categories (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Tasks Table
 CREATE TABLE tasks (
-    id SERIAL PRIMARY KEY,  -- Use SERIAL for auto-increment
+    id SERIAL PRIMARY KEY,  -- Auto-increment ID
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category_id INT,
     user_id INT NOT NULL,
-    status BOOLEAN DEFAULT FALSE,  -- Use BOOLEAN for status (TRUE/FALSE)
+    status BOOLEAN DEFAULT FALSE,  -- Status: TRUE/FALSE
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deadline TIMESTAMP,  -- New deadline column
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+ALTER TABLE tasks
+ADD COLUMN deadline TIMESTAMP;
+
 
 -- Activity Logs Table
 CREATE TABLE activity_logs (
