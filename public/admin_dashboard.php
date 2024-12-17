@@ -167,7 +167,7 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
 
-            <div class="tab-pane fade show active" id="tasks" role="tabpanel">
+            <div class="tab-pane fade" id="tasks" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="mb-0">Task Management</h2>
                     <div class="dropdown">
@@ -214,7 +214,7 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
                 </div>
 
                 <!-- Task Summary Table -->
-                <div id="taskSummaryContainer" style="display: none;">
+                <div class="tab-pane" id="taskSummaryContainer" style="display: none;">
                     <h3>Task Summary by User</h3>
                     <table class="table table-bordered table-striped bg-white text-dark">
                         <thead>
@@ -269,7 +269,7 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <!-- Category Task Stats Table -->
-            <div id="categoryTaskStatsContainer" style="display: none;">
+            <div class="tab-pane" id="categoryTaskStatsContainer" style="display: none;">
                 <h3>Category Task Stats</h3>
                 <table class="table table-bordered table-striped bg-white text-dark">
                     <thead>

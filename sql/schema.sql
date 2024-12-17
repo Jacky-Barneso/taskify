@@ -70,3 +70,20 @@ SELECT
     t.user_id
 FROM tasks t
 LEFT JOIN categories c ON t.category_id = c.id;
+
+CREATE MATERIALIZED VIEW category_task_stats AS
+SELECT 
+    u.id AS user_id,
+    u.username AS user_name,
+    c.id AS category_id,
+    c.name AS category_name,
+    COUNT(CASE WHEN t.status = TRUE THEN 1 END) AS completed_tasks,
+    COUNT(CASE WHEN t.status = FALSE THEN 1 END) AS pending_tasks
+FROM 
+    users u
+LEFT JOIN 
+    tasks t ON u.id = t.user_id
+LEFT JOIN 
+    categories c ON t.category_id = c.id
+GROUP BY 
+    u.id, u.username, c.id, c.name;
