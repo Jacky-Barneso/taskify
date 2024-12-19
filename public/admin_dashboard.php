@@ -18,6 +18,18 @@ if (!$user) {
     exit;
 }
 
+// Define or retrieve $specificUserId
+$specificUserId = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
+
+// Check if $specificUserId is set before using it
+if ($specificUserId) {
+    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE user_id = :user_id");
+    $stmt->execute([':user_id' => $specificUserId]);
+    $userTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    echo "No specific user ID provided.";
+}
+
 // Fetch all users
 $stmtUsers = $pdo->prepare("SELECT * FROM users ORDER BY created_at DESC");
 $stmtUsers->execute();
@@ -58,6 +70,45 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
 $stmtCategoryTaskStats = $pdo->prepare("SELECT * FROM category_task_stats");
 $stmtCategoryTaskStats->execute();
 $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
+
+function logActivity($pdo, $actorId, $actionType, $tableName, $details, $actorType = 'user') {
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO activity_logs (user_id, action_type, table_name, details, actor_type, timestamp) 
+            VALUES (:user_id, :action_type, :table_name, :details, :actor_type, NOW())
+        ");
+        $stmt->execute([
+            ':user_id' => $actorId,
+            ':action_type' => $actionType,
+            ':table_name' => $tableName,
+            ':details' => $details,
+            ':actor_type' => $actorType
+        ]);
+    } catch (PDOException $e) {
+        error_log("Failed to log activity: " . $e->getMessage());
+    }
+}
+
+
+$stmtLogs = $pdo->prepare("
+    SELECT 
+        activity_logs.*, 
+        users.username 
+    FROM 
+        activity_logs 
+    INNER JOIN 
+        users 
+    ON 
+        activity_logs.user_id = users.id 
+    WHERE 
+        activity_logs.user_id = :user_id
+    ORDER BY 
+        created_at DESC
+");
+$stmtLogs->execute([':user_id' => $specificUserId]);
+$filteredLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+
 ?>
 
 <!DOCTYPE html>
@@ -121,6 +172,9 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" role="tab">Categories</button>
+            </li>
+            <li class="nav-item">
+            <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" role="tab">Activity Logs</button>
             </li>
         </ul>
 
@@ -333,6 +387,37 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
 
+            <div class="tab-pane fade" id="logs" role="tabpanel">
+    <h2>Activity Logs</h2>
+    <input type="text" id="searchLogs" class="form-control mb-3" placeholder="Search Logs...">
+
+    <table class="table table-bordered table-striped bg-white text-dark">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Table</th>
+                <th>Details</th>
+                <th>Timestamp</th>
+            </tr>
+        </thead>
+        <tbody id="logsTableBody">
+        <?php foreach ($filteredLogs as $log): ?>
+            <tr>
+                <td><?= htmlspecialchars($log['username']); ?></td>
+                <td><?= htmlspecialchars($log['action_type']); ?></td>
+                <td><?= htmlspecialchars($log['table_name']); ?></td>
+                <td><?= htmlspecialchars($log['details']); ?></td>
+                <td><?= htmlspecialchars($log['actor_type']); ?></td>
+                <td><?= htmlspecialchars($log['timestamp']); ?></td>
+            </tr>
+        <?php endforeach; ?>
+
+        </tbody>
+    </table>
+</div>
+
         </div>
     </div>
 
@@ -385,6 +470,19 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
         document.getElementById('searchUsers').addEventListener('keyup', () => filterTable('searchUsers', 'usersTableBody'));
         document.getElementById('searchTasks').addEventListener('keyup', () => filterTable('searchTasks', 'tasksTableBody'));
         document.getElementById('searchCategories').addEventListener('keyup', () => filterTable('searchCategories', 'categoriesTableBody'));
+        
+        document.getElementById('searchLogs').addEventListener('keyup', function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#logsTableBody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const matches = Array.from(cells).some(cell => 
+                cell.textContent.toLowerCase().includes(filter)
+        );
+        row.style.display = matches ? '' : 'none';
+        });
+    });
 
     </script>
 </body>

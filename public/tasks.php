@@ -18,9 +18,10 @@ $stmt->execute([':user_id' => $user_id]);
 $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get the search query if available
-$search = isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '';
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+$overdue = isset($_GET['overdue']) ? true : false;
 
-// Modify the query to filter tasks by title if search is not empty
+// Build the SQL query dynamically based on search and overdue conditions
 $sql = "SELECT * FROM tasks WHERE user_id = :user_id";
 $params = [':user_id' => $user_id];
 
@@ -29,7 +30,11 @@ if ($search) {
     $params[':search'] = '%' . $search . '%';
 }
 
-// Fetch tasks for the logged-in user
+if ($overdue) {
+    $sql .= " AND deadline < NOW() AND status = FALSE";  // Assuming status = FALSE for incomplete tasks
+}
+
+// Prepare and execute the query
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -184,6 +189,16 @@ if (isset($_GET['toggle_status'])) {
         .category-badge {
             font-size: 0.9rem;
         }
+        /* Optional: Customize the dropdown button appearance */
+        .dropdown-toggle {
+            background-color: #dc3545; /* red */
+            border: none;
+        }
+
+        .dropdown-menu {
+            width: 200px; /* Set custom width for the dropdown */
+        }
+
     </style>
 </head>
 <body>
@@ -196,108 +211,136 @@ if (isset($_GET['toggle_status'])) {
 
         <!-- Notification Messages -->
         <?php if (isset($_GET['message'])): ?>
-            <div class="alert alert-success">
-                <?= htmlspecialchars($_GET['message']) ?>
-            </div>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <?= htmlspecialchars($_GET['message']) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" onclick="clearMessageFromURL()"></button>
+        </div>
         <?php endif; ?>
 
         <!-- Add Task Section -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="h4">Your Tasks</h2>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4"></h2>
+                <form method="GET" action="" class="d-flex">
+                    <input type="text" name="search" class="form-control me-2" placeholder="Search" value="<?= isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '' ?>">
+                    <button type="submit" class="btn btn-outline-secondary">Search</button>
+                </form>
+            </div>
         </div>
 
-        <!-- Search Bar -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h4"></h2>
-    <form method="GET" class="d-flex">
-        <input type="text" name="search" class="form-control me-2" placeholder="Search task title" value="<?= isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '' ?>">
-        <button type="submit" class="btn btn-outline-secondary">Search</button>
-    </form>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+        <form method="GET" class="d-flex">
+            <div class="dropdown">
+                <!-- Dropdown button -->
+                <button class="btn btn-danger dropdown-toggle" type="button" id="taskDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    View Tasks
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="taskDropdown">
+                    <!-- All Tasks Option -->
+                    <li><a class="dropdown-item" href="tasks.php">All Tasks</a></li>
+                    <!-- Overdue Tasks Option -->
+                    <li><a class="dropdown-item" href="tasks.php?overdue=true">Overdue Tasks</a></li>
+                </ul>
+            </div>
+        </form>
+
+    <!-- Add Task Button -->
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
 </div>
+
+
 
 
         <!-- Task List -->
         <section>
-            <div class="row">
-                <!-- Work Category -->
-                <div class="col-md-6">
-                    <h3 class="h5 text-secondary">Work</h3>
-                    <ul class="list-group">
-                        <?php foreach ($tasks as $task): ?>
-                            <?php if ($task['category_id'] == 1): ?>
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <span class="fw-bold">
-                                            <?= htmlspecialchars($task['title']) ?>
-                                        </span>
-                                        <p class="text-muted mb-1">
-                                            <?= htmlspecialchars($task['description']) ?>
-                                        </p>
-                                        <span class="badge bg-info category-badge">
-                                            <?= $task['status'] ? 'Completed' : 'Pending' ?>
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
-                                            <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
-                                        </a>
-                                        <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" 
-                                           data-bs-target="#editTaskModal" 
-                                           data-id="<?= $task['id'] ?>" 
-                                           data-title="<?= htmlspecialchars($task['title']) ?>" 
-                                           data-description="<?= htmlspecialchars($task['description']) ?>" 
-                                           data-category="<?= $task['category_id'] ?>">
-                                            Edit
-                                        </a>
-                                    </div>
-                                </li>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
+    <div class="row">
+        <!-- Work Category -->
+        <div class="col-md-6">
+            <h3 class="h5 text-secondary">Work</h3>
+            <ul class="list-group">
+                <?php foreach ($tasks as $task): ?>
+                    <?php if ($task['category_id'] == 1): ?>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="fw-bold">
+                                    <?= htmlspecialchars($task['title']) ?>
+                                </span>
+                                <p class="text-muted mb-1">
+                                    <?= htmlspecialchars($task['description']) ?>
+                                </p>
+                                <p class="text-muted mb-1">
+                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small>
+                                </p>
+                                <span class="badge bg-info category-badge">
+                                    <?= $task['status'] ? 'Completed' : 'Pending' ?>
+                                </span>
+                            </div>
+                            <div>
+                                <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
+                                    <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
+                                </a>
+                                <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
+                                <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" 
+                                   data-bs-target="#editTaskModal" 
+                                   data-id="<?= $task['id'] ?>" 
+                                   data-title="<?= htmlspecialchars($task['title']) ?>" 
+                                   data-description="<?= htmlspecialchars($task['description']) ?>" 
+                                   data-category="<?= $task['category_id'] ?>" 
+                                   data-deadline="<?= htmlspecialchars($task['deadline']) ?>">
+                                    Edit
+                                </a>
+                            </div>
+                        </li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ul>
+        </div>
 
-                <!-- Personal Category -->
-                <div class="col-md-6">
-                    <h3 class="h5 text-secondary">Personal</h3>
-                    <ul class="list-group">
-                        <?php foreach ($tasks as $task): ?>
-                            <?php if ($task['category_id'] == 2): ?>
-                                <li class="list-group-item d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <span class="fw-bold">
-                                            <?= htmlspecialchars($task['title']) ?>
-                                        </span>
-                                        <p class="text-muted mb-1">
-                                            <?= htmlspecialchars($task['description']) ?>
-                                        </p>
-                                        <span class="badge bg-info category-badge">
-                                            <?= $task['status'] ? 'Completed' : 'Pending' ?>
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
-                                            <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
-                                        </a>
-                                        <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
-                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" 
-                                           data-bs-target="#editTaskModal" 
-                                           data-id="<?= $task['id'] ?>" 
-                                           data-title="<?= htmlspecialchars($task['title']) ?>" 
-                                           data-description="<?= htmlspecialchars($task['description']) ?>" 
-                                           data-category="<?= $task['category_id'] ?>">
-                                            Edit
-                                        </a>
-                                    </div>
-                                </li>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
-        </section>
+        <!-- Personal Category -->
+        <div class="col-md-6">
+            <h3 class="h5 text-secondary">Personal</h3>
+            <ul class="list-group">
+                <?php foreach ($tasks as $task): ?>
+                    <?php if ($task['category_id'] == 2): ?>
+                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="fw-bold">
+                                    <?= htmlspecialchars($task['title']) ?>
+                                </span>
+                                <p class="text-muted mb-1">
+                                    <?= htmlspecialchars($task['description']) ?>
+                                </p>
+                                <p class="text-muted mb-1">
+                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small>
+                                </p>
+                                <span class="badge bg-info category-badge">
+                                    <?= $task['status'] ? 'Completed' : 'Pending' ?>
+                                </span>
+                            </div>
+                            <div>
+                                <a href="tasks.php?toggle_status=<?= $task['id'] ?>" class="btn btn-sm btn-outline-info">
+                                    <?= $task['status'] ? 'Mark as Pending' : 'Mark as Completed' ?>
+                                </a>
+                                <a href="tasks.php?delete=<?= $task['id'] ?>" onclick="return confirm('Are you sure?')" class="btn btn-sm btn-outline-danger">Delete</a>
+                                <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" 
+                                   data-bs-target="#editTaskModal" 
+                                   data-id="<?= $task['id'] ?>" 
+                                   data-title="<?= htmlspecialchars($task['title']) ?>" 
+                                   data-description="<?= htmlspecialchars($task['description']) ?>" 
+                                   data-category="<?= $task['category_id'] ?>" 
+                                   data-deadline="<?= htmlspecialchars($task['deadline']) ?>">
+                                    Edit
+                                </a>
+                            </div>
+                        </li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     </div>
+</section>
+
 
 <!-- Add Task Modal -->
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
@@ -307,7 +350,7 @@ if (isset($_GET['toggle_status'])) {
                 <h5 class="modal-title" id="addTaskModalLabel">Add New Task</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="tasks.php">
+            <form method="POST" action="tasks.php" id="addTaskForm">
                 <div class="modal-body">
                     <!-- Task Title -->
                     <div class="mb-3">
@@ -324,7 +367,7 @@ if (isset($_GET['toggle_status'])) {
                     <!-- Task Category -->
                     <div class="mb-3">
                         <label for="add_category_id" class="form-label">Category</label>
-                        <select id="add_category_id" name="category_id" class="form-select">
+                        <select id="add_category_id" name="category_id" class="form-select" required>
                             <option value="">Select Category</option>
                             <option value="1">Work</option>
                             <option value="2">Personal</option>
@@ -334,7 +377,7 @@ if (isset($_GET['toggle_status'])) {
                     <!-- Task Deadline -->
                     <div class="mb-3">
                         <label for="add_task_deadline" class="form-label">Deadline</label>
-                        <input type="datetime-local" id="add_task_deadline" name="task_deadline" class="form-control">
+                        <input type="datetime-local" id="add_task_deadline" name="task_deadline" class="form-control" required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -346,8 +389,6 @@ if (isset($_GET['toggle_status'])) {
     </div>
 </div>
 
-
-
 <!-- Edit Task Modal -->
 <div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -356,7 +397,7 @@ if (isset($_GET['toggle_status'])) {
                 <h5 class="modal-title" id="editTaskModalLabel">Edit Task</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="tasks.php">
+            <form method="POST" action="tasks.php" id="editTaskForm">
                 <div class="modal-body">
                     <!-- Hidden field for task ID (for updating) -->
                     <input type="hidden" id="edit_task_id" name="task_id">
@@ -376,7 +417,7 @@ if (isset($_GET['toggle_status'])) {
                     <!-- Task Category -->
                     <div class="mb-3">
                         <label for="edit_category_id" class="form-label">Category</label>
-                        <select id="edit_category_id" name="category_id" class="form-select">
+                        <select id="edit_category_id" name="category_id" class="form-select" required>
                             <option value="">Select Category</option>
                             <option value="1">Work</option>
                             <option value="2">Personal</option>
@@ -386,7 +427,7 @@ if (isset($_GET['toggle_status'])) {
                     <!-- Task Deadline -->
                     <div class="mb-3">
                         <label for="edit_task_deadline" class="form-label">Deadline</label>
-                        <input type="datetime-local" id="edit_task_deadline" name="task_deadline" class="form-control">
+                        <input type="datetime-local" id="edit_task_deadline" name="task_deadline" class="form-control" required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -402,11 +443,54 @@ if (isset($_GET['toggle_status'])) {
 
 
 
+
     <!-- Bootstrap JS and Popper.js -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 <script>
+// Function to show success message
+function showAlert(message, type = 'success') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    document.body.insertBefore(alertDiv, document.body.firstChild);
+}
+
+// Client-side validation for Add Task Form
+document.getElementById('addTaskForm').addEventListener('submit', function(event) {
+    // Check if all required fields are filled out
+    const title = document.getElementById('add_task_title').value;
+    const category = document.getElementById('add_category_id').value;
+    const deadline = document.getElementById('add_task_deadline').value;
+    
+    if (!title || !category || !deadline) {
+        event.preventDefault(); // Prevent form submission
+        showAlert('All fields are required.', 'danger');
+    } else {
+        // Optionally you can check if the deadline is a valid date here as well
+        showAlert('Task added successfully!', 'success');
+    }
+});
+
+// Client-side validation for Edit Task Form
+document.getElementById('editTaskForm').addEventListener('submit', function(event) {
+    // Check if all required fields are filled out
+    const title = document.getElementById('edit_task_title').value;
+    const category = document.getElementById('edit_category_id').value;
+    const deadline = document.getElementById('edit_task_deadline').value;
+    
+    if (!title || !category || !deadline) {
+        event.preventDefault(); // Prevent form submission
+        showAlert('All fields are required.', 'danger');
+    } else {
+        // Optionally you can check if the deadline is a valid date here as well
+        showAlert('Task updated successfully!', 'success');
+    }
+});
+
+// Function to show modal data in edit modal
 const editTaskModal = document.getElementById('editTaskModal');
 editTaskModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget; // Button that triggered the modal
@@ -424,7 +508,11 @@ editTaskModal.addEventListener('show.bs.modal', function (event) {
     document.getElementById('edit_category_id').value = categoryId;
 });
 
-
+function clearMessageFromURL() {
+        const url = new URL(window.location);
+        url.searchParams.delete('message'); // Remove 'message' query parameter
+        window.history.replaceState({}, document.title, url); // Update the URL without reloading the page
+    }
 
 </script>
 
