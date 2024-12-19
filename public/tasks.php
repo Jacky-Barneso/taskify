@@ -199,6 +199,11 @@ if (isset($_GET['toggle_status'])) {
             width: 200px; /* Set custom width for the dropdown */
         }
 
+        #profileButton {
+        cursor: pointer;
+        font-weight: bold;
+        text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
@@ -206,8 +211,24 @@ if (isset($_GET['toggle_status'])) {
         <!-- Header -->
         <header class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
             <h1 class="display-6 text-primary">Quicklist</h1>
-            <a href="login.php" class="btn btn-outline-danger">Logout</a>
+            <div class="d-flex align-items-center">
+                <a href="#" id="profileButton" role="button" data-bs-toggle="dropdown" aria-expanded="false" class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center" style="width: 40px; height: 40px; text-decoration: none;">
+                    <?php
+                    $username = $_SESSION['username'] ?? 'User';
+                    $initials = '';
+                    foreach (explode(' ', $username) as $word) {
+                        $initials .= strtoupper($word[0]);
+                    }
+                    echo htmlspecialchars($initials);
+                    ?>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileButton">
+                    <li><a class="dropdown-item text-danger" href="login.php">Logout</a></li>
+                </ul>
+            </div>
         </header>
+
+
 
         <!-- Notification Messages -->
         <?php if (isset($_GET['message'])): ?>

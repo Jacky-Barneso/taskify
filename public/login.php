@@ -16,6 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($user && password_verify($password, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_role'] = $user['role']; // Store user role
+        $_SESSION['username'] = $user['username'];
         
         if ($user['role'] === 'admin') {
             $_SESSION['admin_id'] = $user['id'];
