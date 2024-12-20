@@ -2,6 +2,7 @@
 session_start();
 // Database connection
 include '../config/db.php';
+include '../config/activity_log.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
@@ -17,6 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_role'] = $user['role']; // Store user role
         $_SESSION['username'] = $user['username'];
+
+        // Log login activity
+        logActivity($user['id'], 'Login', 'users', $user['id']);
         
         if ($user['role'] === 'admin') {
             $_SESSION['admin_id'] = $user['id'];
