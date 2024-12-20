@@ -75,6 +75,24 @@ CREATE TABLE activity_logs (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE OR REPLACE FUNCTION calculate_days_until_deadline(task_id INTEGER)
+RETURNS INTEGER AS $$
+DECLARE
+    days_left INTEGER;
+BEGIN
+    SELECT EXTRACT(DAY FROM (deadline - CURRENT_DATE)::interval)::INTEGER
+    INTO days_left
+    FROM tasks
+    WHERE id = task_id;
+
+    IF days_left IS NULL THEN
+        RETURN -1; -- Return -1 if the deadline is null
+    END IF;
+
+    RETURN days_left;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION get_user_overdue_tasks(user_id INTEGER)
 RETURNS TABLE (
     task_id INTEGER,

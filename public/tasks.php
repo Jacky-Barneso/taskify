@@ -3,19 +3,39 @@
 session_start();
 
 // If the user is not logged in, redirect to the login page
-if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+if (isset($_SESSION['user_id'])) {
+    $user_id = $_SESSION['user_id'];
+} else {
+    // Redirect to login page if user_id is not set
+    header("Location: login.php");
     exit;
 }
 
 // Include the database connection file
 include '../config/db.php';
 
-// Fetch tasks for the logged-in user
-$user_id = $_SESSION['user_id'];
-$stmt = $pdo->prepare("SELECT * FROM tasks WHERE user_id = :user_id");
+// Fetch tasks for the logged-in user with remaining days until deadline
+$stmt = $pdo->prepare("
+    SELECT id, title, description, deadline, status, category_id
+    FROM tasks
+    WHERE user_id = :user_id
+");
 $stmt->execute([':user_id' => $user_id]);
 $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($tasks as $task) {
+    $stmt = $pdo->prepare("
+        SELECT calculate_days_until_deadline(:task_id)
+    ");
+    $stmt->execute([':task_id' => $task['id']]);
+    $days_left = $stmt->fetchColumn();
+
+    // Add the result directly to the task array
+    $task['days_left'] = $days_left !== false ? $days_left : null;
+}
+
+
+
 
 // Get the search query if available
 $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -282,6 +302,15 @@ if (isset($_GET['toggle_status'])) {
             <ul class="list-group">
                 <?php foreach ($tasks as $task): ?>
                     <?php if ($task['category_id'] == 1): ?>
+                        <?php
+                            // Calculate remaining days for the task
+                            $stmt = $pdo->prepare("
+                                SELECT calculate_days_until_deadline(:task_id)
+                            ");
+                            $stmt->execute([':task_id' => $task['id']]);
+                            $days_left = $stmt->fetchColumn();
+                            $task['days_left'] = $days_left !== false ? $days_left : null;
+                        ?>
                         <li class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
                                 <span class="fw-bold">
@@ -291,7 +320,14 @@ if (isset($_GET['toggle_status'])) {
                                     <?= htmlspecialchars($task['description']) ?>
                                 </p>
                                 <p class="text-muted mb-1">
-                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small>
+                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small><br>
+                                    <small>
+                                        <?= isset($task['days_left']) && $task['days_left'] !== null 
+                                            ? ($task['days_left'] > 0 
+                                                ? "{$task['days_left']} days remaining" 
+                                                : "Deadline passed") 
+                                            : "Deadline not set" ?>
+                                    </small>
                                 </p>
                                 <span class="badge bg-info category-badge">
                                     <?= $task['status'] ? 'Completed' : 'Pending' ?>
@@ -324,6 +360,15 @@ if (isset($_GET['toggle_status'])) {
             <ul class="list-group">
                 <?php foreach ($tasks as $task): ?>
                     <?php if ($task['category_id'] == 2): ?>
+                        <?php
+                            // Calculate remaining days for the task
+                            $stmt = $pdo->prepare("
+                                SELECT calculate_days_until_deadline(:task_id)
+                            ");
+                            $stmt->execute([':task_id' => $task['id']]);
+                            $days_left = $stmt->fetchColumn();
+                            $task['days_left'] = $days_left !== false ? $days_left : null;
+                        ?>
                         <li class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
                                 <span class="fw-bold">
@@ -333,7 +378,14 @@ if (isset($_GET['toggle_status'])) {
                                     <?= htmlspecialchars($task['description']) ?>
                                 </p>
                                 <p class="text-muted mb-1">
-                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small>
+                                    <small>Deadline: <?= htmlspecialchars($task['deadline']) ?></small><br>
+                                    <small>
+                                        <?= isset($task['days_left']) && $task['days_left'] !== null 
+                                            ? ($task['days_left'] > 0 
+                                                ? "{$task['days_left']} days remaining" 
+                                                : "Deadline passed") 
+                                            : "Deadline not set" ?>
+                                    </small>
                                 </p>
                                 <span class="badge bg-info category-badge">
                                     <?= $task['status'] ? 'Completed' : 'Pending' ?>
@@ -361,6 +413,8 @@ if (isset($_GET['toggle_status'])) {
         </div>
     </div>
 </section>
+
+
 
 
 <!-- Add Task Modal -->
