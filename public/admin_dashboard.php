@@ -18,18 +18,6 @@ if (!$user) {
     exit;
 }
 
-// Define or retrieve $specificUserId
-$specificUserId = isset($_GET['user_id']) ? intval($_GET['user_id']) : null;
-
-// Check if $specificUserId is set before using it
-if ($specificUserId) {
-    $stmt = $pdo->prepare("SELECT * FROM tasks WHERE user_id = :user_id");
-    $stmt->execute([':user_id' => $specificUserId]);
-    $userTasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    echo "No specific user ID provided.";
-}
-
 // Fetch all users
 $stmtUsers = $pdo->prepare("SELECT * FROM users ORDER BY created_at DESC");
 $stmtUsers->execute();
@@ -55,6 +43,12 @@ $stmtCategories = $pdo->prepare("
 $stmtCategories->execute();
 $allCategories = $stmtCategories->fetchAll(PDO::FETCH_ASSOC);
 
+// Fetch activity logs
+$stmtLogs = $pdo->prepare("SELECT * FROM activity_logs ORDER BY action_time DESC");
+$stmtLogs->execute();
+$activityLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+
 // Fetch database views
 // View: task_summary_by_user
 $stmtSummary = $pdo->prepare("SELECT * FROM task_summary_by_user");
@@ -70,45 +64,6 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
 $stmtCategoryTaskStats = $pdo->prepare("SELECT * FROM category_task_stats");
 $stmtCategoryTaskStats->execute();
 $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
-
-function logActivity($pdo, $actorId, $actionType, $tableName, $details, $actorType = 'user') {
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO activity_logs (user_id, action_type, table_name, details, actor_type, timestamp) 
-            VALUES (:user_id, :action_type, :table_name, :details, :actor_type, NOW())
-        ");
-        $stmt->execute([
-            ':user_id' => $actorId,
-            ':action_type' => $actionType,
-            ':table_name' => $tableName,
-            ':details' => $details,
-            ':actor_type' => $actorType
-        ]);
-    } catch (PDOException $e) {
-        error_log("Failed to log activity: " . $e->getMessage());
-    }
-}
-
-
-$stmtLogs = $pdo->prepare("
-    SELECT 
-        activity_logs.*, 
-        users.username 
-    FROM 
-        activity_logs 
-    INNER JOIN 
-        users 
-    ON 
-        activity_logs.user_id = users.id 
-    WHERE 
-        activity_logs.user_id = :user_id
-    ORDER BY 
-        created_at DESC
-");
-$stmtLogs->execute([':user_id' => $specificUserId]);
-$filteredLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
-
-
 ?>
 
 <!DOCTYPE html>
@@ -387,36 +342,38 @@ $filteredLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
                 </table>
             </div>
 
+            <!-- Activity Logs Tab -->
             <div class="tab-pane fade" id="logs" role="tabpanel">
-    <h2>Activity Logs</h2>
-    <input type="text" id="searchLogs" class="form-control mb-3" placeholder="Search Logs...">
+                <h2>Activity Logs</h2>
 
-    <table class="table table-bordered table-striped bg-white text-dark">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>User</th>
-                <th>Action</th>
-                <th>Table</th>
-                <th>Details</th>
-                <th>Timestamp</th>
-            </tr>
-        </thead>
-        <tbody id="logsTableBody">
-        <?php foreach ($filteredLogs as $log): ?>
-            <tr>
-                <td><?= htmlspecialchars($log['username']); ?></td>
-                <td><?= htmlspecialchars($log['action_type']); ?></td>
-                <td><?= htmlspecialchars($log['table_name']); ?></td>
-                <td><?= htmlspecialchars($log['details']); ?></td>
-                <td><?= htmlspecialchars($log['actor_type']); ?></td>
-                <td><?= htmlspecialchars($log['timestamp']); ?></td>
-            </tr>
-        <?php endforeach; ?>
+                <!-- Search Bar -->
+                <input type="text" id="searchLogs" class="form-control mb-3" placeholder="Search Activity Logs...">
 
-        </tbody>
-    </table>
-</div>
+                <table class="table table-bordered table-striped bg-white text-dark">
+                    <thead>
+                        <tr>
+                            <th>Log ID</th>
+                            <th>User ID</th>
+                            <th>Action</th>
+                            <th>Table Name</th>
+                            <th>Record ID</th>
+                            <th>Action Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <?php foreach ($activityLogs as $log): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($log['id']); ?></td>
+                                <td><?= htmlspecialchars($log['user_id']); ?></td>
+                                <td><?= htmlspecialchars($log['action']); ?></td>
+                                <td><?= htmlspecialchars($log['table_name']); ?></td>
+                                <td><?= htmlspecialchars($log['record_id']); ?></td>
+                                <td><?= htmlspecialchars($log['action_time']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
 
         </div>
     </div>

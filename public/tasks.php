@@ -13,6 +13,7 @@ if (isset($_SESSION['user_id'])) {
 
 // Include the database connection file
 include '../config/db.php';
+include '../config/activity_log.php';
 
 // Fetch tasks for the logged-in user with remaining days until deadline
 $stmt = $pdo->prepare("
@@ -78,11 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_task'])) {
         ':deadline' => $deadline, // Add the deadline here
         ':user_id' => $user_id,
     ]);
-    
+
+    // Log the activity for adding a new task
+    logActivity($user_id, 'Add Task', 'tasks', $pdo->lastInsertId());  // Log the task creation using the last inserted ID
+
     // Redirect after successful addition
     header('Location: tasks.php?message=Task added successfully');
     exit;
 }
+
 
 
 // Handle task deletion
@@ -109,12 +114,13 @@ if (isset($_GET['delete'])) {
     $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = :id AND user_id = :user_id");
     $stmt->execute([':id' => $task_id, ':user_id' => $user_id]);
 
+    // Log the activity for deleting the task
+    logActivity($user_id, 'Delete Task', 'tasks', $task_id);  // Log the task deletion using the task's ID
+
     // Redirect with a success message
     header('Location: tasks.php?message=Task deleted successfully');
     exit;
 }
-
-
 
 // Handle task editing
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_task'])) {
@@ -146,6 +152,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_task'])) {
         ':user_id' => $user_id, 
     ]);
     
+    // Log the task update activity
+    logActivity($user_id, 'Edit Task', 'tasks', $task_id);  // Log the task editing action
+
     // Redirect with success message
     header('Location: tasks.php?message=Task updated successfully');
     exit;
@@ -181,6 +190,9 @@ if (isset($_GET['toggle_status'])) {
             ':user_id' => $user_id
         ]);
 
+        // Log the status update activity
+        logActivity($user_id, 'Update Task Status', 'tasks', $task_id);  // Log the task status update action
+
         // Add a specific success message based on the new status
         $status_message = $new_status ? 'Task marked as completed' : 'Task marked as pending';
         header("Location: tasks.php?message=$status_message");
@@ -191,6 +203,7 @@ if (isset($_GET['toggle_status'])) {
         exit;
     }
 }
+
 
 ?>
 
