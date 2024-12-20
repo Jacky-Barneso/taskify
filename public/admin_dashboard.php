@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+include '../config/activity_log.php';
 
 // Check if admin is logged in
 if (!isset($_SESSION['admin_id']) || $_SESSION['user_role'] !== 'admin') {
@@ -64,6 +65,69 @@ $tasksWithCategory = $stmtTasksWithCategory->fetchAll(PDO::FETCH_ASSOC);
 $stmtCategoryTaskStats = $pdo->prepare("SELECT * FROM category_task_stats");
 $stmtCategoryTaskStats->execute();
 $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
+
+// Handle user deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
+    $user_id_to_delete = $_POST['user_id'];
+
+    // Ensure the user ID is numeric to prevent SQL injection
+    if (!is_numeric($user_id_to_delete)) {
+        header('Location: admin_dashboard.php?message=Invalid user ID');
+        exit;
+    }
+
+    // Check if the user exists and is not an admin
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = :id AND role != 'admin'");
+    $stmt->execute([':id' => $user_id_to_delete]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        header('Location: admin_dashboard.php?message=User not found or cannot delete admin');
+        exit;
+    }
+
+    // Log the activity before deleting the user
+    logActivity($admin_id, 'Delete User', 'users', $user_id_to_delete);
+
+    // Perform the delete operation
+    $stmt = $pdo->prepare("DELETE FROM users WHERE id = :id");
+    $stmt->execute([':id' => $user_id_to_delete]);
+
+    // Redirect with a success message
+    header('Location: admin_dashboard.php?message=User deleted successfully');
+    exit;
+}
+
+// Handle user update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_user'])) {
+    $user_id_to_update = $_POST['user_id'];
+    $updated_username = htmlspecialchars($_POST['username']);
+    $updated_email = htmlspecialchars($_POST['email']);
+    $updated_role = $_POST['role'];
+
+    // Ensure the user ID is numeric to prevent SQL injection
+    if (!is_numeric($user_id_to_update)) {
+        header('Location: admin_dashboard.php?message=Invalid user ID');
+        exit;
+    }
+
+    // Update the user information
+    $stmt = $pdo->prepare("UPDATE users SET username = :username, email = :email, role = :role WHERE id = :id");
+    $stmt->execute([
+        ':username' => $updated_username,
+        ':email' => $updated_email,
+        ':role' => $updated_role,
+        ':id' => $user_id_to_update,
+    ]);
+
+    // Log the activity
+    logActivity($admin_id, 'Edit User', 'users', $user_id_to_update);
+
+    // Redirect with a success message
+    header('Location: admin_dashboard.php?message=User updated successfully');
+    exit;
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -163,12 +227,56 @@ $categoryTaskStats = $stmtCategoryTaskStats->fetchAll(PDO::FETCH_ASSOC);
                                 <td><?= htmlspecialchars($singleUser['role']); ?></td>
                                 <td><?= htmlspecialchars($singleUser['created_at']); ?></td>
                                 <td>
-                                    <?php if ($singleUser['role'] !== 'admin'): ?>
-                                        <form action="delete_user.php" method="POST" style="display: inline;">
-                                            <input type="hidden" name="user_id" value="<?= $singleUser['id']; ?>">
-                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                        </form>
-                                    <?php endif; ?>
+                                <?php if ($singleUser['role'] !== 'admin'): ?>
+                                    <!-- Delete Button -->
+                                    <form action="admin_dashboard.php" method="POST" style="display: inline;">
+                                        <input type="hidden" name="user_id" value="<?= $singleUser['id']; ?>">
+                                        <button type="submit" name="delete_user" class="btn btn-danger btn-sm" 
+                                                onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
+                                    </form>
+
+                                    <!-- Edit Button -->
+                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal<?= $singleUser['id']; ?>">
+                                        Edit
+                                    </button>
+
+                                    <!-- Edit User Modal -->
+                                    <div class="modal fade" id="editUserModal<?= $singleUser['id']; ?>" tabindex="-1" aria-labelledby="editUserModalLabel<?= $singleUser['id']; ?>" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form action="admin_dashboard.php" method="POST">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="editUserModalLabel<?= $singleUser['id']; ?>">Edit User Information</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="user_id" value="<?= $singleUser['id']; ?>">
+                                                        <div class="mb-3">
+                                                            <label for="username<?= $singleUser['id']; ?>" class="form-label">Username</label>
+                                                            <input type="text" class="form-control" id="username<?= $singleUser['id']; ?>" name="username" value="<?= htmlspecialchars($singleUser['username']); ?>" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="email<?= $singleUser['id']; ?>" class="form-label">Email</label>
+                                                            <input type="email" class="form-control" id="email<?= $singleUser['id']; ?>" name="email" value="<?= htmlspecialchars($singleUser['email']); ?>" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="role<?= $singleUser['id']; ?>" class="form-label">Role</label>
+                                                            <select class="form-select" id="role<?= $singleUser['id']; ?>" name="role" required>
+                                                                <option value="user" <?= $singleUser['role'] === 'user' ? 'selected' : ''; ?>>User</option>
+                                                                <option value="admin" <?= $singleUser['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" name="edit_user" class="btn btn-success">Save Changes</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+
                                 </td>
                             </tr>
                         <?php endforeach; ?>
