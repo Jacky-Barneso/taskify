@@ -256,10 +256,18 @@ if (isset($_GET['toggle_status'])) {
                     ?>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileButton">
+                    <?php
+                    // Fetch email from the session or database
+                    $email = $_SESSION['email'] ?? 'example@example.com'; // Replace with actual email fetching logic if needed
+                    ?>
+                    <li class="dropdown-item text-muted"><?php echo htmlspecialchars($email); ?></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="login.php">Logout</a></li>
                 </ul>
             </div>
         </header>
+
+
 
 
 
