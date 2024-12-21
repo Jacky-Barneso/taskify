@@ -1,31 +1,48 @@
 <?php
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Database connection
+    // Include database connection
     include '../config/db.php';
-    
+
+    // Include activity log function
+    include '../config/activity_log.php';
+
     $username = $_POST['username'];
     $email = $_POST['email'];
     $password = $_POST['password'];
-    $role = $_POST['role']; // Capture role from the form
-    $password_hash = password_hash($password, PASSWORD_DEFAULT); // Hash the password before storing
+    $role = $_POST['role'];
+    $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
-    // Insert the new user into the database
-    $stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash, role) VALUES (:username, :email, :password_hash, :role)");
-    
-    // Execute the statement with parameters
-    if ($stmt->execute([
-        ':username' => $username,
-        ':email' => $email,
-        ':password_hash' => $password_hash,
-        ':role' => $role
-    ])) {
-        echo "Registration successful! <a href='login.php'>Login now</a>";
-    } else {
-        echo "Error occurred during registration!";
+    try {
+        // Insert the new user into the database
+        $stmt = $pdo->prepare("
+            INSERT INTO users (username, email, password_hash, role) 
+            VALUES (:username, :email, :password_hash, :role)
+        ");
+        if ($stmt->execute([
+            ':username' => $username,
+            ':email' => $email,
+            ':password_hash' => $password_hash,
+            ':role' => $role
+        ])) {
+            // Get the ID of the newly created user
+            $newUserId = $pdo->lastInsertId();
+
+            // Log the activity
+            logActivity($newUserId, 'Add', 'users', $newUserId);
+
+            echo "Registration successful! <a href='login.php'>Login now</a>";
+        } else {
+            echo "Error occurred during registration!";
+        }
+    } catch (PDOException $e) {
+        echo "Database error: " . $e->getMessage();
     }
 }
 ?>
+
+
+
 
 <!DOCTYPE html>
 <html lang="en">
